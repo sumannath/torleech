@@ -1,5 +1,6 @@
 import os.path
 import platform
+import subprocess
 
 from selenium.common import TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
@@ -13,17 +14,23 @@ from selenium.webdriver.support.wait import WebDriverWait
 from config import constants
 
 
-def get_service_for_selenium_driver():
+def get_system_details():
     system_name = platform.system()
     system_machine = platform.machine()
 
-    if system_machine == "Windows":
-        if system_machine == "x86_64":
+    return system_name, system_machine
+
+
+def get_service_for_selenium_driver():
+    system_name, system_machine = get_system_details()
+
+    if system_name == "Windows":
+        if system_machine in ["x86_64", "AMD64"]:
             service = Service(executable_path=os.path.join(constants.DRIVER_DIR, "win64", "geckodriver.exe"))
         else:
             service = Service(executable_path=os.path.join(constants.DRIVER_DIR, "win32", "geckodriver.exe"))
     elif system_name == "Linux":
-        if system_machine == "x86_64":
+        if system_machine in ["x86_64", "AMD64"]:
             service = Service(executable_path=os.path.join(constants.DRIVER_DIR, "linux64", "geckodriver"))
         else:
             service = Service(executable_path=os.path.join(constants.DRIVER_DIR, "linux32", "geckodriver"))
@@ -33,12 +40,54 @@ def get_service_for_selenium_driver():
     return service
 
 
+def get_firefox_path():
+    system_name, system_machine = get_system_details()
+
+    if system_name == "Windows":
+        default_path = r'C:\Program Files\Mozilla Firefox\firefox.exe'
+        if os.path.exists(default_path):
+            firefox_path = default_path
+        else:
+            # If not, try to find the path using the Windows registry
+            import winreg
+
+            try:
+                # Open the registry key for Firefox
+                key = r'SOFTWARE\Mozilla\Mozilla Firefox'
+                hkey = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key)
+
+                # Query the registry for the installed Version
+                firefox_ver, _ = winreg.QueryValueEx(hkey, 'CurrentVersion')
+
+                hkey = winreg.OpenKey(hkey, f"{firefox_ver}\\Main")
+                firefox_path, _ = winreg.QueryValueEx(hkey, 'PathToExe')
+
+                # Close the registry key
+                winreg.CloseKey(hkey)
+
+            except Exception as e:
+                print(f"Error: {e}")
+                firefox_path = None
+
+        return firefox_path
+    elif system_name == "Linux":
+        command = "which firefox"
+        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, error = process.communicate()
+        if error:
+            print("Error:")
+            print(error.decode())
+            return None
+
+        return output.decode()
+
+
 def start_run():
     options = Options()
     options.headless = True
-    options.add_argument("--headless")
+    # options.add_argument("--headless")
 
-    options.binary_location = os.path.join(constants.DRIVER_DIR, "firefox", "firefox")
+    options.binary_location = get_firefox_path()
 
     service = get_service_for_selenium_driver()
 
