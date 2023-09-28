@@ -86,9 +86,7 @@ def start_run():
     options = Options()
     options.headless = True
     options.add_argument("--headless")
-
     options.binary_location = get_firefox_path()
-
     service = get_service_for_selenium_driver()
 
     driver = webdriver.Firefox(options=options, service=service)
