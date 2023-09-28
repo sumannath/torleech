@@ -79,13 +79,13 @@ def get_firefox_path():
             print(error.decode())
             return None
 
-        return output.decode()
+        return output.decode().strip()
 
 
 def start_run():
     options = Options()
     options.headless = True
-    # options.add_argument("--headless")
+    options.add_argument("--headless")
 
     options.binary_location = get_firefox_path()
 
