@@ -1,3 +1,2 @@
 selenium
-websocket
 websocket-client

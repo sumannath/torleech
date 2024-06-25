@@ -29,13 +29,17 @@ def get_service_for_selenium_driver():
     if system_name == "Windows":
         if system_machine in ["x86_64", "AMD64"]:
             service = Service(executable_path=os.path.join(constants.DRIVER_DIR, "win64", "geckodriver.exe"))
-        else:
+        elif system_machine in ["x86"]:
             service = Service(executable_path=os.path.join(constants.DRIVER_DIR, "win32", "geckodriver.exe"))
+        elif system_machine in ["aarch64"]:
+            service = Service(executable_path=os.path.join(constants.DRIVER_DIR, "winaarch64", "geckodriver.exe"))
     elif system_name == "Linux":
         if system_machine in ["x86_64", "AMD64"]:
             service = Service(executable_path=os.path.join(constants.DRIVER_DIR, "linux64", "geckodriver"))
-        else:
+        elif system_machine in ["x86"]:
             service = Service(executable_path=os.path.join(constants.DRIVER_DIR, "linux32", "geckodriver"))
+        elif system_machine in ["aarch64"]:
+            service = Service(executable_path=os.path.join(constants.DRIVER_DIR, "linuxaarch64", "geckodriver"))
     else:
         service = None
 
