@@ -1,6 +1,7 @@
 import os.path
 import platform
 import subprocess
+import logging
 
 from selenium.common import TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
@@ -18,6 +19,7 @@ def get_system_details():
     system_name = platform.system()
     system_machine = platform.machine()
 
+    logging.info(f"System: {system_name}, Machine: {system_machine}")
     return system_name, system_machine
 
 
@@ -37,6 +39,7 @@ def get_service_for_selenium_driver():
     else:
         service = None
 
+    logging.info(f"Driver location: {service.path}")
     return service
 
 
@@ -82,6 +85,14 @@ def get_firefox_path():
         return output.decode().strip()
 
 
+def setup_logging():
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='[%(asctime)s] %(levelname)s: %(message)s',
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
+
+
 def start_run():
     options = Options()
     options.headless = True
@@ -90,6 +101,8 @@ def start_run():
     service = get_service_for_selenium_driver()
 
     driver = webdriver.Firefox(options=options, service=service)
+
+    logging.info(f"Gecko driver initialized successfully. Trying login...")
     driver.get("https://www.torrentleech.org/user/account/login/")
     driver.find_element(By.NAME, 'username').send_keys(constants.USERNAME)
     driver.find_element(By.NAME, 'password').send_keys(constants.PASSWORD)
@@ -98,11 +111,15 @@ def start_run():
     try:
         element_present = EC.presence_of_element_located((By.ID, 'top-app'))
         WebDriverWait(driver, timeout).until(element_present)
+        logging.info(f"Login successful!")
     except TimeoutException:
-        print("Timed out waiting for page to load")
+        logging.error(f"Login unsuccessful!")
 
     driver.quit()
 
 
 if __name__ == "__main__":
+    setup_logging()
+
+    logging.info(f"Starting run")
     start_run()
