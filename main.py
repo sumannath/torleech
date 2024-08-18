@@ -2,6 +2,7 @@ import os.path
 import platform
 import subprocess
 import logging
+from time import sleep
 
 from selenium.common import TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
@@ -101,7 +102,11 @@ def start_run():
     options = Options()
     options.headless = True
     options.add_argument("--headless")
-    options.binary_location = get_firefox_path()
+    if "FIREFOX_PATH" in os.environ:
+        binary_path = os.environ["FIREFOX_PATH"]
+    else:
+        binary_path = get_firefox_path()
+    options.binary_location = binary_path
     service = get_service_for_selenium_driver()
 
     driver = webdriver.Firefox(options=options, service=service)
@@ -124,6 +129,10 @@ def start_run():
 
 if __name__ == "__main__":
     setup_logging()
+    sleep_hours = os.environ['SLEEP_HOURS']
 
-    logging.info(f"Starting run")
-    start_run()
+    while True:
+        logging.info(f"Starting run")
+        start_run()
+        logging.info(f"Sleeping for {sleep_hours} hours...")
+        sleep(int(sleep_hours) * 60 * 60)
