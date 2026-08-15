@@ -1,0 +1,90 @@
+name: build-and-publish
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+    branches: [master]
+  # Firefox and geckodriver come from apk at build time, so a periodic rebuild is
+  # how the image picks up browser and security updates.
+  schedule:
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: sumannath/torleech_autologin
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Syntax-check Python
+        run: python -m compileall -q main.py config
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image for testing
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: ${{ env.IMAGE }}:ci
+          build-args: GIT_SHA=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # A credential file baked into a layer does not fail any normal build, and
+      # the image still works perfectly. It has to be checked for explicitly.
+      - name: Fail if credentials leaked into the image
+        run: |
+          if docker run --rm --entrypoint sh "$IMAGE:ci" -c 'ls -A /app' \
+             | grep -qiE '^\.env|\.env$|^secrets$|\.pem$|\.key$'; then
+            echo "::error::credential file found in image layer"
+            docker run --rm --entrypoint sh "$IMAGE:ci" -c 'ls -A /app'
+            exit 1
+          fi
+          echo "OK: no credential files in image"
+
+      # Deliberately does not start the application: that would perform a real
+      # login, and the site locks the account after 6 attempts.
+      - name: Smoke test
+        run: |
+          docker run --rm --entrypoint sh "$IMAGE:ci" -c 'set -e; firefox --version; geckodriver --version | head -1; python3 -m py_compile /app/main.py; test -x /app/start.sh'
+
+      - name: Log in to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Compute tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=short
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Push
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          build-args: GIT_SHA=${{ github.sha }}
+          cache-from: type=gha

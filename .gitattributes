@@ -1,0 +1,9 @@
+# These files are executed inside a Linux container. A CRLF checkout on Windows
+# turns the shebang into "#!/bin/sh\r", which fails at runtime with a misleading
+# "no such file or directory". Force LF regardless of platform or core.autocrlf.
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+requirements.txt text eol=lf
+.dockerignore text eol=lf

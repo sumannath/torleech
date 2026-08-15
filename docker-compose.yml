@@ -1,0 +1,33 @@
+services:
+  torleech:
+    build:
+      context: .
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
+    image: torleech:latest
+    container_name: torleech
+    restart: unless-stopped
+    # Give the SIGTERM handler time to finish a run and quit the driver.
+    stop_grace_period: 30s
+    environment:
+      TORLEECH_USERNAME: ${TORLEECH_USERNAME:?set TORLEECH_USERNAME in .env}
+      TORLEECH_PASSWORD: ${TORLEECH_PASSWORD:?set TORLEECH_PASSWORD in .env}
+      SLEEP_HOURS: ${SLEEP_HOURS:-6}
+    # Firefox profiles live here. Capped so a regression can never fill the host
+    # again; tmpfs is RAM, so this costs up to 512m of memory when full.
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+    volumes:
+      - ./download:/app/download
+      # Provisioned at runtime by start.sh. Without this volume the pip install
+      # repeats on every container recreate. Firefox needs no volume: it comes
+      # from apk in the image.
+      - venv:/app/venv
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  venv:
