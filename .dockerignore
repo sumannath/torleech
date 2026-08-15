@@ -4,3 +4,22 @@
 .gitignore
 .dockerignore
 Dockerfile
+venv
+download
+docker-compose.yml
+__pycache__
+**/__pycache__
+
+# Credentials are supplied as environment variables at run time. They must never
+# be copied into an image layer: images get published, and layers are readable by
+# anyone who can pull them.
+.env
+.env.*
+*.env
+secrets
+*.pem
+*.key
+
+# geckodriver comes from apk (GECKODRIVER_PATH), so none of the bundled builds
+# are used in the image. They stay in the repo for local development.
+drivers

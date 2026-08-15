@@ -1,20 +1,26 @@
-FROM ubuntu:latest
+FROM alpine:3.22
 LABEL authors="suman"
 
 WORKDIR /app
 
 COPY . /app/
 
-RUN apt update
-RUN apt install -y python3 python3-pip python3.12-venv wget tar bzip2 libxtst6 libgtk-3-0 libx11-xcb-dev  \
-    libdbus-glib-1-2 libxt6 libpci-dev ffmpeg libsm6 libxext6 libasound2-plugins
-RUN mkdir /app/download
-RUN wget -O /app/download/firefox.tar.bz2 "https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-US"
-RUN tar -xvjf /app/download/firefox.tar.bz2 -C /app/download/
-RUN python3 -m venv venv
-RUN venv/bin/pip install -r requirements.txt
+# Firefox and geckodriver must come from apk: Mozilla's official tarball is
+# glibc-linked and will not run under musl, so it cannot be fetched at runtime
+# the way it can on a glibc base. ttf-freefont gives headless Firefox a font to
+# render with.
+RUN apk add --no-cache python3 py3-pip firefox geckodriver ttf-freefont \
+    && mkdir -p /app/download \
+    && chmod +x /app/start.sh
 
 ENV SLEEP_HOURS=6
-ENV FIREFOX_PATH=/app/download/firefox/firefox
+ENV FIREFOX_PATH=/usr/bin/firefox
+ENV GECKODRIVER_PATH=/usr/bin/geckodriver
 
-CMD ["venv/bin/python", "main.py"]
+# Declared last so that a new revision does not invalidate the build cache above.
+ARG GIT_SHA=unknown
+LABEL org.opencontainers.image.title="torleech" \
+      org.opencontainers.image.source="https://github.com/sumannath/torleech" \
+      org.opencontainers.image.revision="${GIT_SHA}"
+
+ENTRYPOINT ["/app/start.sh"]
